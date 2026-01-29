@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  /* 背景色 */
+  --bg-page: #0B0B0E;
+  --bg-surface: #16161A;
+  --bg-elevated: #1A1A1E;
+  
+  /* 主色 */
+  --accent-primary: #32D583;
+  --accent-secondary: #6366F1;
+  --accent-coral: #E85A4F;
+  
+  /* 文字色 */
+  --text-primary: #FAFAF9;
+  --text-secondary: #6B6B70;
+  --text-muted: #4A4A50;
+  
+  /* 边框 */
+  --border-color: #2A2A2E;
+  --border-subtle: #3A3A40;
+  
+  /* 语义色 */
+  --green-success: #32D583;
+  --yellow-warning: #FFB547;
+  --red-error: #E85A4F;
+  --blue-info: #60A5FA;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Safe area for bottom nav */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}

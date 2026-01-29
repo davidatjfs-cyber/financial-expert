@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.zeabur.app/template.json",
+  "name": "财务分析专家",
+  "description": "上市公司财务报表智能分析系统",
+  "build": {
+    "type": "python"
+  },
+  "start": {
+    "command": "streamlit run app.py --server.port $PORT --server.address 0.0.0.0"
+  },
+  "env": {
+    "DASHSCOPE_API_KEY": {
+      "description": "通义千问 API Key (阿里云 DashScope)",
+      "required": false
+    }
+  }
+}
