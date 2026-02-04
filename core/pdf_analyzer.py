@@ -169,7 +169,7 @@ def extract_financials_from_pdf(pdf_path: str, use_ai: bool = True, force_ai: bo
                 try:
                     num_str = match.replace(",", "").replace("%", "").strip()
                     val = float(num_str)
-                    if 0 < val < 100:  # 合理的百分比范围
+                    if 0 < val < 500:  # 合理的百分比范围（ROE/ROA 可能 >100）
                         return val
                 except (ValueError, TypeError):
                     continue
@@ -209,62 +209,62 @@ def extract_financials_from_pdf(pdf_path: str, use_ai: bool = True, force_ai: bo
 
     # Total revenues - 支持多种格式
     result.revenue = find_first_number([
-        r"Total\s+net\s+sales\s*\$?\s*([0-9,]+)",  # Apple 格式优先
-        r"Total\s+revenues?\s*\$?\s*([0-9,]+)",
-        r"Net\s+sales\s*\$?\s*([0-9,]+)",
-        r"Operatingrevenue\s*\(RMB\)\s*([0-9,]+(?:\.[0-9]+)?)",  # 五粮液格式
-        r"Operating\s+revenue\s*\(RMB\)\s*([0-9,]+(?:\.[0-9]+)?)",
-        r"营业收入[：:\s]*([0-9,]+)",
-        r"实现营业收入([0-9,]+(?:\.[0-9]+)?)",  # 银行财报格式
+        r"Total\s+net\s+sales\s*\$?\s*([0-9,\s]+)",  # Apple 格式优先
+        r"Total\s+revenues?\s*\$?\s*([0-9,\s]+)",
+        r"Net\s+sales\s*\$?\s*([0-9,\s]+)",
+        r"Operatingrevenue\s*\(RMB\)\s*([0-9,\s]+(?:\.[0-9]+)?)",  # 五粮液格式
+        r"Operating\s+revenue\s*\(RMB\)\s*([0-9,\s]+(?:\.[0-9]+)?)",
+        r"营业收入[：:\s]*([0-9,\s]+)",
+        r"实现营业收入([0-9,\s]+(?:\.[0-9]+)?)",  # 银行财报格式
     ], text_no_newline, min_value=1000)
 
     # Cost of revenues / Cost of sales
     result.cost = find_first_number([
-        r"Total\s+cost\s+of\s+(?:revenues?|sales)\s*\$?\s*([0-9,]+)",
-        r"Cost\s+of\s+(?:revenues?|sales)\s*\$?\s*([0-9,]+)",
-        r"Cost\s+of\s+sales:\s*\n?\s*Products?\s*\$?\s*([0-9,]+)",  # Apple 格式
-        r"营业成本[：:\s]*([0-9,]+)",
+        r"Total\s+cost\s+of\s+(?:revenues?|sales)\s*\$?\s*([0-9,\s]+)",
+        r"Cost\s+of\s+(?:revenues?|sales)\s*\$?\s*([0-9,\s]+)",
+        r"Cost\s+of\s+sales:\s*\n?\s*Products?\s*\$?\s*([0-9,\s]+)",  # Apple 格式
+        r"营业成本[：:\s]*([0-9,\s]+)",
     ], text_no_newline, min_value=1000)
 
     # Gross profit / Gross margin
     result.gross_profit = find_first_number([
-        r"Gross\s+(?:profit|margin)\s*\$?\s*([0-9,]+)",
-        r"毛利[润]?[：:\s]*([0-9,]+)",
+        r"Gross\s+(?:profit|margin)\s*\$?\s*([0-9,\s]+)",
+        r"毛利[润]?[：:\s]*([0-9,\s]+)",
     ], text_no_newline, min_value=100)
 
     # Net income - 支持多种格式
     result.net_profit = find_first_number([
-        r"Net\s+income\s+attributable\s+to\s+common\s+stockholders?\s*\$?\s*([0-9,]+)",
-        r"Net\s+income\s*\$?\s*([0-9,]+)",
-        r"thelistedcompany.s\s+([0-9,]+(?:\.[0-9]+)?)",  # 五粮液格式 - 用.匹配任意引号
-        r"Net\s+profit\s+attributable\s+to.*shareholders\s*\(RMB\)\s*([0-9,]+(?:\.[0-9]+)?)",
-        r"归属于上市公司股东的净利润[（(]元[)）]\s*([0-9,]+(?:\.[0-9]+)?)",  # A股季报格式
-        r"净利润[：:\s]*([0-9,]+)",
-        r"归属于.*股东的净利润\s*([0-9,]+)",  # 银行财报格式
+        r"Net\s+income\s+attributable\s+to\s+common\s+stockholders?\s*\$?\s*([0-9,\s]+)",
+        r"Net\s+income\s*\$?\s*([0-9,\s]+)",
+        r"thelistedcompany.s\s+([0-9,\s]+(?:\.[0-9]+)?)",  # 五粮液格式 - 用.匹配任意引号
+        r"Net\s+profit\s+attributable\s+to.*shareholders\s*\(RMB\)\s*([0-9,\s]+(?:\.[0-9]+)?)",
+        r"归属于上市公司股东的净利润[（(]元[)）]\s*([0-9,\s]+(?:\.[0-9]+)?)",  # A股季报格式
+        r"净利润[：:\s]*([0-9,\s]+)",
+        r"归属于.*股东的净利润\s*([0-9,\s]+)",  # 银行财报格式
     ], text_no_newline, min_value=100)
 
     # ========== 资产负债表 ==========
 
     result.total_assets = find_first_number([
-        r"Total\s+assets\s*\$?\s*([0-9,]+)",
-        r"Totalassets\s*\(RMB\)\s*([0-9,]+(?:\.[0-9]+)?)",  # 五粮液格式
-        r"资产总计\s+([0-9,]+(?:\.[0-9]+)?)",  # A股季报格式
-        r"资产总[计额][：:\s]*([0-9,]+)",
-        r"资产总额\s*([0-9,]+)",  # 银行财报格式
+        r"Total\s+assets\s*\$?\s*([0-9,\s]+)",
+        r"Totalassets\s*\(RMB\)\s*([0-9,\s]+(?:\.[0-9]+)?)",  # 五粮液格式
+        r"资产总计\s+([0-9,\s]+(?:\.[0-9]+)?)",  # A股季报格式
+        r"资产总[计额][：:\s]*([0-9,\s]+)",
+        r"资产总额\s*([0-9,\s]+)",  # 银行财报格式
     ], text, min_value=1000)
 
     result.total_equity = find_first_number([
-        r"Total\s+stockholders['']?\s*equity\s*\$?\s*\(?([0-9,]+)\)?",
-        r"Total\s+equity\s*\$?\s*\(?([0-9,]+)\)?",
-        r"所有者权益合计[：:\s]*([0-9,]+)",
-        r"股东权益\s*([0-9,]+)",  # 银行财报格式
-        r"归属于.*股东的股东权益\s*([0-9,]+)",
+        r"Total\s+stockholders['']?\s*equity\s*\$?\s*\(?([0-9,\s]+)\)?",
+        r"Total\s+equity\s*\$?\s*\(?([0-9,\s]+)\)?",
+        r"所有者权益合计[：:\s]*([0-9,\s]+)",
+        r"股东权益\s*([0-9,\s]+)",  # 银行财报格式
+        r"归属于.*股东的股东权益\s*([0-9,\s]+)",
     ], text, min_value=100)
 
     result.total_liabilities = find_first_number([
-        r"Total\s+liabilities\s*\$?\s*([0-9,]+)",
-        r"负债总[计额][：:\s]*([0-9,]+)",
-        r"负债合计[：:\s]*([0-9,]+)",
+        r"Total\s+liabilities\s*\$?\s*([0-9,\s]+)",
+        r"负债总[计额][：:\s]*([0-9,\s]+)",
+        r"负债合计[：:\s]*([0-9,\s]+)",
     ], text, min_value=1000)
     
     # 银行特殊：如果没有直接的负债数据，用资产-权益计算
@@ -272,28 +272,28 @@ def extract_financials_from_pdf(pdf_path: str, use_ai: bool = True, force_ai: bo
         result.total_liabilities = result.total_assets - result.total_equity
 
     result.current_assets = find_first_number([
-        r"Total\s+current\s+assets\s*\$?\s*([0-9,]+)",
-        r"流动资产合计[：:\s]*([0-9,]+)",
+        r"Total\s+current\s+assets\s*\$?\s*([0-9,\s]+)",
+        r"流动资产合计[：:\s]*([0-9,\s]+)",
     ], text, min_value=100)
 
     result.current_liabilities = find_first_number([
-        r"Total\s+current\s+liabilities\s*\$?\s*([0-9,]+)",
-        r"流动负债合计[：:\s]*([0-9,]+)",
+        r"Total\s+current\s+liabilities\s*\$?\s*([0-9,\s]+)",
+        r"流动负债合计[：:\s]*([0-9,\s]+)",
     ], text, min_value=100)
 
     result.cash = find_first_number([
-        r"Cash\s+and\s+cash\s+equivalents\s*\$?\s*([0-9,]+)",
-        r"货币资金[：:\s]*([0-9,]+)",
+        r"Cash\s+and\s+cash\s+equivalents\s*\$?\s*([0-9,\s]+)",
+        r"货币资金[：:\s]*([0-9,\s]+)",
     ], text, min_value=10)
 
     result.inventory = find_first_number([
-        r"Inventor(?:y|ies)\s*\$?\s*([0-9,]+)",
-        r"存货[：:\s]*([0-9,]+)",
+        r"Inventor(?:y|ies)\s*\$?\s*([0-9,\s]+)",
+        r"存货[：:\s]*([0-9,\s]+)",
     ], text, min_value=10)
 
     result.receivables = find_first_number([
-        r"Accounts\s+receivable[^$]*\$?\s*([0-9,]+)",
-        r"应收账款[：:\s]*([0-9,]+)",
+        r"Accounts\s+receivable[^$]*\$?\s*([0-9,\s]+)",
+        r"应收账款[：:\s]*([0-9,\s]+)",
     ], text, min_value=10)
 
     # 如果没有权益但有资产和负债，计算权益
