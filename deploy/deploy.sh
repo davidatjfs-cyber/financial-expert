@@ -3,6 +3,8 @@ set -euo pipefail
 
 # Run from repo root (e.g. /opt/financial-expert)
 
+DEPLOY_SKIP_GIT="${DEPLOY_SKIP_GIT:-0}"
+
 if [ -f ./.env ]; then
   set -a
   . ./.env
@@ -15,10 +17,14 @@ export APP_REV="${APP_REV:-$REV}"
 echo "[deploy] git revision: ${REV}"
 echo "[deploy] APP_REV: ${APP_REV}"
 
-echo "[deploy] sync source"
-git fetch --all
-git reset --hard origin/main
-git clean -fd
+if [ "${DEPLOY_SKIP_GIT}" != "1" ]; then
+  echo "[deploy] sync source"
+  git fetch --all
+  git reset --hard origin/main
+  git clean -fd
+else
+  echo "[deploy] skip git sync (DEPLOY_SKIP_GIT=1)"
+fi
 
 echo "[deploy] build images"
 docker compose down
