@@ -3,6 +3,10 @@ set -euo pipefail
 
 # Run from repo root (e.g. /opt/financial-expert)
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
 DEPLOY_SKIP_GIT="${DEPLOY_SKIP_GIT:-0}"
 
 if [ -f ./.env ]; then
