@@ -22,14 +22,14 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body className="antialiased bg-[#0B0B0E] text-[#FAFAF9]">
-        <div className="flex h-screen">
+        <div className="flex min-h-[100dvh]">
           {/* Sidebar - Desktop only */}
           <div className="hidden md:block">
             <Sidebar />
           </div>
           
           {/* Main Content */}
-          <main className="flex-1 overflow-auto pb-20 md:pb-0">
+          <main className="flex-1 overflow-auto pb-[calc(env(safe-area-inset-bottom,0px)+88px)] md:pb-0">
             {children}
           </main>
         </div>

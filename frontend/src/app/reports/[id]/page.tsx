@@ -227,7 +227,7 @@ export default function ReportDetailPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 flex flex-col gap-4 max-w-2xl mx-auto pb-24">
+    <div className="p-4 md:p-6 flex flex-col gap-4 max-w-2xl mx-auto pb-[calc(env(safe-area-inset-bottom,0px)+140px)]">
       {/* Header with Back Button */}
       <div className="flex items-center gap-3">
         <button

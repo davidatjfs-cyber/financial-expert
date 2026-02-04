@@ -2644,10 +2644,16 @@ def get_stock_indicators(symbol: str, market: str = "CN"):
             stop_loss_trigger = bool(float(last_close) <= float(stop_line))
 
         # 卖出价位：
-        # 情况 1：止盈 - RSI>70 且顶背离；或股价跌破 MA20
-        # 情况 2：止损 - 买入价 - 2×ATR
+        # - 参考止损线：买入价 - 2×ATR
+        # - 参考止盈线：MA20（跌破则认为短期趋势结束）
+        # sell_ok 仍表示“是否触发卖出条件”，sell_price 改为“参考卖出价位”（优先止损线，其次 MA20，其次现价）。
         sell_ok = bool((take_profit and rsi_divergence) or price_break_ma20 or stop_loss_trigger)
-        sell_price = float(last_close) if (sell_ok is True and last_close is not None) else None
+        if stop_line is not None:
+            sell_price = float(stop_line)
+        elif ma20_now is not None:
+            sell_price = float(ma20_now)
+        else:
+            sell_price = float(last_close) if last_close is not None else None
 
         if sell_ok is True:
             if stop_loss_trigger:
@@ -2663,8 +2669,10 @@ def get_stock_indicators(symbol: str, market: str = "CN"):
         sell_price = None
         sell_reason = None
 
-    buy_price_aggressive = reference_buy_price
-    buy_price_stable = None
+    # 买入价位：输出为“参考买入价位”，默认用 MA20（更贴近回调买点）；若不可用则回退现价。
+    # buy_price_aggressive_ok 仍表示是否满足当前策略的强条件。
+    buy_price_aggressive = float(ma20_now) if ma20_now is not None else (float(last_close) if last_close is not None else None)
+    buy_price_stable = float(ma60_now) if 'ma60_now' in locals() and ma60_now is not None else None
 
     currency = "CNY" if market.upper() == "CN" else ("HKD" if market.upper() == "HK" else "USD")
     name = None

@@ -60,13 +60,15 @@ def _extract_with_ocr(path: str, max_pages: int = 10) -> str:
         return ""
 
     # Safety guard for auto fallback: skip huge PDFs unless explicitly enabled.
+    # Use OCR_AUTO_MAX_PDF_MB to adjust (default: 25MB).
     if (not enable_ocr) and auto_fallback:
         try:
-            from pathlib import Path
-
             p = Path(path)
-            # Avoid OCR on very large PDFs by default.
-            if p.exists() and p.stat().st_size > 8 * 1024 * 1024:
+            max_mb = float((os.environ.get("OCR_AUTO_MAX_PDF_MB") or "25").strip() or "25")
+            if max_mb <= 0:
+                max_mb = 25
+            max_bytes = int(max_mb * 1024 * 1024)
+            if p.exists() and p.stat().st_size > max_bytes:
                 return ""
         except Exception:
             pass

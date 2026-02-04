@@ -91,20 +91,31 @@ export default function IndicatorsPage() {
 
   const getMetric = (code: string) => latestMetrics.find((m) => m.metric_code === code);
 
-  const industryAvg = {
-    grossMargin: 35.0,
-    netMargin: 15.0,
-    roe: 20.0,
-    currentRatio: 1.5,
-    quickRatio: 1.0,
-    debtRatio: 60.0,
-    assetTurnover: 0.8,
-    inventoryTurnover: 15.0,
-    receivableTurnover: 10.0,
+  const industryAvg: {
+    grossMargin: number | null;
+    netMargin: number | null;
+    roe: number | null;
+    currentRatio: number | null;
+    quickRatio: number | null;
+    debtRatio: number | null;
+    assetTurnover: number | null;
+    inventoryTurnover: number | null;
+    receivableTurnover: number | null;
+  } = {
+    grossMargin: null,
+    netMargin: null,
+    roe: null,
+    currentRatio: null,
+    quickRatio: null,
+    debtRatio: null,
+    assetTurnover: null,
+    inventoryTurnover: null,
+    receivableTurnover: null,
   };
 
-  const compare = (value: number | null | undefined, avg: number, higherIsBetter = true): 'up' | 'down' | 'neutral' => {
+  const compare = (value: number | null | undefined, avg: number | null, higherIsBetter = true): 'up' | 'down' | 'neutral' => {
     if (value == null) return 'neutral';
+    if (avg == null) return 'neutral';
     const good = higherIsBetter ? value >= avg : value <= avg;
     if (good) return 'up';
     return 'down';
@@ -128,19 +139,19 @@ export default function IndicatorsPage() {
 
     return {
       profitability: [
-        { name: '毛利率', value: pct(grossMargin?.value), benchmark: `行业均值 ${industryAvg.grossMargin}%`, trend: compare(grossMargin?.value, industryAvg.grossMargin, true) },
-        { name: '净利率', value: pct(netMargin?.value), benchmark: `行业均值 ${industryAvg.netMargin}%`, trend: compare(netMargin?.value, industryAvg.netMargin, true) },
-        { name: 'ROE', value: pct(roe?.value), benchmark: `行业均值 ${industryAvg.roe}%`, trend: compare(roe?.value, industryAvg.roe, true) },
+        { name: '毛利率', value: pct(grossMargin?.value), benchmark: industryAvg.grossMargin == null ? '暂无行业基准' : `行业均值 ${industryAvg.grossMargin}%`, trend: compare(grossMargin?.value, industryAvg.grossMargin, true) },
+        { name: '净利率', value: pct(netMargin?.value), benchmark: industryAvg.netMargin == null ? '暂无行业基准' : `行业均值 ${industryAvg.netMargin}%`, trend: compare(netMargin?.value, industryAvg.netMargin, true) },
+        { name: 'ROE', value: pct(roe?.value), benchmark: industryAvg.roe == null ? '暂无行业基准' : `行业均值 ${industryAvg.roe}%`, trend: compare(roe?.value, industryAvg.roe, true) },
       ],
       solvency: [
-        { name: '流动比率', value: fmt(currentRatio?.value), benchmark: `健康值 > ${industryAvg.currentRatio}`, trend: compare(currentRatio?.value, industryAvg.currentRatio, true) },
-        { name: '速动比率', value: fmt(quickRatio?.value), benchmark: `健康值 > ${industryAvg.quickRatio}`, trend: compare(quickRatio?.value, industryAvg.quickRatio, true) },
-        { name: '资产负债率', value: pct(debtRatio?.value), benchmark: `健康值 < ${industryAvg.debtRatio}%`, trend: compare(debtRatio?.value, industryAvg.debtRatio, false) },
+        { name: '流动比率', value: fmt(currentRatio?.value), benchmark: industryAvg.currentRatio == null ? '参考阈值：> 1.5' : `健康值 > ${industryAvg.currentRatio}`, trend: compare(currentRatio?.value, industryAvg.currentRatio, true) },
+        { name: '速动比率', value: fmt(quickRatio?.value), benchmark: industryAvg.quickRatio == null ? '参考阈值：> 1.0' : `健康值 > ${industryAvg.quickRatio}`, trend: compare(quickRatio?.value, industryAvg.quickRatio, true) },
+        { name: '资产负债率', value: pct(debtRatio?.value), benchmark: industryAvg.debtRatio == null ? '参考阈值：< 60%' : `健康值 < ${industryAvg.debtRatio}%`, trend: compare(debtRatio?.value, industryAvg.debtRatio, false) },
       ],
       operation: [
-        { name: '总资产周转率', value: fmt(assetTurnover?.value), benchmark: `行业均值 ${industryAvg.assetTurnover}`, trend: compare(assetTurnover?.value, industryAvg.assetTurnover, true) },
-        { name: '存货周转率', value: fmt(inventoryTurnover?.value), benchmark: `行业均值 ${industryAvg.inventoryTurnover}`, trend: compare(inventoryTurnover?.value, industryAvg.inventoryTurnover, true) },
-        { name: '应收账款周转率', value: fmt(receivableTurnover?.value), benchmark: `行业均值 ${industryAvg.receivableTurnover}`, trend: compare(receivableTurnover?.value, industryAvg.receivableTurnover, true) },
+        { name: '总资产周转率', value: fmt(assetTurnover?.value), benchmark: industryAvg.assetTurnover == null ? '暂无行业基准' : `行业均值 ${industryAvg.assetTurnover}`, trend: compare(assetTurnover?.value, industryAvg.assetTurnover, true) },
+        { name: '存货周转率', value: fmt(inventoryTurnover?.value), benchmark: industryAvg.inventoryTurnover == null ? '暂无行业基准' : `行业均值 ${industryAvg.inventoryTurnover}`, trend: compare(inventoryTurnover?.value, industryAvg.inventoryTurnover, true) },
+        { name: '应收账款周转率', value: fmt(receivableTurnover?.value), benchmark: industryAvg.receivableTurnover == null ? '暂无行业基准' : `行业均值 ${industryAvg.receivableTurnover}`, trend: compare(receivableTurnover?.value, industryAvg.receivableTurnover, true) },
       ],
     };
   }, [latestMetrics]);
