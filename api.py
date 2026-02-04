@@ -38,6 +38,7 @@ from core.models import (
 from core.repository import (
     list_reports,
     get_report,
+    normalize_market,
     upsert_company,
     delete_report_children,
     upsert_report_market_fetch,
@@ -3085,6 +3086,8 @@ async def upload_report(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     company_name: str = Form(""),
+    market: str = Form(""),
+    symbol: str = Form(""),
     period_type: str = Form("annual"),
     period_end: str = Form(None),
 ):
@@ -3112,11 +3115,70 @@ async def upload_report(
         report_name = f"{final_company} - {decoded_filename}"
         filetype = (file.filename or "").rsplit(".", 1)[-1].lower() if file.filename else ""
         
+        symbol_in = (symbol or "").strip()
+        market_in = (market or "").strip()
+        symbol_norm = None
+        market_norm = None
+        company_id = None
+        industry_code = None
+
+        # Optional: bind upload to a company if user provides market+symbol.
+        if symbol_in:
+            try:
+                market_norm = normalize_market(market_in or "CN")
+                symbol_norm = normalize_symbol(market_norm, symbol_in)
+
+                if final_company == "待识别" and symbol_norm:
+                    report_name = f"{symbol_norm} - {decoded_filename}"
+
+                try:
+                    mkt = (market_norm or "CN").upper()
+                    if mkt in {"US", "HK"}:
+                        disable_proxies_for_process()
+                        import yfinance as yf
+
+                        yf_symbol = symbol_norm
+                        if mkt == "HK" and not yf_symbol.upper().endswith(".HK"):
+                            base = yf_symbol.replace(".HK", "")
+                            yf_symbol = f"{base.zfill(4)}.HK" if base.isdigit() else f"{base}.HK"
+                        t = yf.Ticker(yf_symbol)
+                        info = {}
+                        try:
+                            info = t.info or {}
+                        except Exception:
+                            info = {}
+                        industry_code = (info.get("industry") or info.get("sector") or None)
+                    elif mkt == "CN":
+                        disable_proxies_for_process()
+                        import akshare as ak
+
+                        code = symbol_norm.split(".")[0]
+                        try:
+                            idf = ak.stock_individual_info_em(symbol=code)
+                            if idf is not None and not idf.empty and "item" in idf.columns and "value" in idf.columns:
+                                row = idf[idf["item"].astype(str).str.contains("行业", na=False)]
+                                if not row.empty:
+                                    industry_code = str(row.iloc[0]["value"]).strip() or None
+                        except Exception:
+                            industry_code = None
+                except Exception:
+                    industry_code = None
+
+                display_name = final_company if final_company != "待识别" else symbol_norm
+                company_id = upsert_company(market=market_norm, symbol=symbol_norm, name=display_name, industry_code=industry_code)
+            except Exception:
+                symbol_norm = None
+                market_norm = None
+                company_id = None
+
         meta = {
             "upload_company_name": final_company,
             "upload_filename": file.filename,
             "upload_filetype": filetype,
             "upload_saved_path": str(saved_path),
+            "upload_market": market_norm,
+            "upload_symbol": symbol_norm,
+            "upload_company_id": company_id,
         }
         
         # Create report record
@@ -3127,6 +3189,18 @@ async def upload_report(
             period_end=period_end,
             source_meta=meta,
         )
+
+        # Bind report to company if available.
+        if company_id:
+            try:
+                with session_scope() as s:
+                    r = s.get(Report, report_id)
+                    if r:
+                        r.company_id = company_id
+                        r.market = market_norm
+                        r.updated_at = int(time.time())
+            except Exception:
+                pass
 
         if filetype != "pdf":
             with session_scope() as s:

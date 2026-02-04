@@ -10,6 +10,8 @@ export default function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [companyName, setCompanyName] = useState('');
+  const [market, setMarket] = useState<'CN' | 'HK' | 'US'>('US');
+  const [symbol, setSymbol] = useState('');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
 
@@ -36,7 +38,7 @@ export default function UploadPage() {
       const finalCompanyName = companyName.trim() || '待识别';
       // 报告期间自动设置为当前日期
       const today = new Date().toISOString().split('T')[0];
-      await uploadReport(file, finalCompanyName, 'annual', today);
+      await uploadReport(file, finalCompanyName, 'annual', today, market, symbol);
       router.push('/reports');
     } catch (err) {
       setError('上传失败，请重试');
@@ -111,6 +113,34 @@ export default function UploadPage() {
             onChange={(e) => setCompanyName(e.target.value)}
             className="w-full bg-[#1A1A1E] text-[#FAFAF9] rounded-xl py-4 px-5 text-base border border-[#2A2A2E] focus:border-[#32D583] focus:outline-none placeholder:text-[#6B6B70]"
           />
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[#6B6B70] text-sm mb-2 block">市场（可选）</label>
+            <select
+              value={market}
+              onChange={(e) => setMarket(e.target.value as any)}
+              className="w-full bg-[#1A1A1E] text-[#FAFAF9] rounded-xl py-4 px-5 text-base border border-[#2A2A2E] focus:border-[#32D583] focus:outline-none"
+            >
+              <option value="CN">CN</option>
+              <option value="HK">HK</option>
+              <option value="US">US</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[#6B6B70] text-sm mb-2 block">股票代码（可选）</label>
+            <input
+              type="text"
+              placeholder="例如 AAPL / 00700 / 600519"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              className="w-full bg-[#1A1A1E] text-[#FAFAF9] rounded-xl py-4 px-5 text-base border border-[#2A2A2E] focus:border-[#32D583] focus:outline-none placeholder:text-[#6B6B70]"
+            />
+            <div className="text-[#6B6B70] text-xs mt-2">
+              填写后可绑定公司，报告详情可显示“所属行业”。
+            </div>
+          </div>
         </div>
       </div>
 

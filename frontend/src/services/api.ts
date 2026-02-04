@@ -368,13 +368,17 @@ export async function uploadReport(
   file: File,
   companyName: string,
   periodType: string,
-  periodEnd: string
+  periodEnd: string,
+  market?: string,
+  symbol?: string
 ): Promise<{ report_id: string; message: string }> {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('company_name', companyName);
   formData.append('period_type', periodType);
   formData.append('period_end', periodEnd);
+  if (market && market.trim()) formData.append('market', market.trim());
+  if (symbol && symbol.trim()) formData.append('symbol', symbol.trim());
 
   const response = await fetch(`${getApiBaseUrl()}/api/reports/upload`, {
     method: 'POST',
