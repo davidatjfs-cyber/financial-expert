@@ -8,16 +8,15 @@ function getApiBaseUrl(): string {
   const normalize = (u: string) => u.replace(/\/+$/, '');
 
   if (typeof window === 'undefined') {
-    return normalize(envUrl || 'http://localhost:8000');
+    return normalize(envUrl || 'http://api:8000');
   }
 
   if (envUrl) {
     return normalize(envUrl);
   }
 
-  // Use same host as frontend but port 8000
-  const host = window.location.hostname;
-  return `http://${host}:8000`;
+  // Default (browser): use same origin, so nginx can reverse-proxy /api to backend.
+  return '';
 }
 
 // ============ Types ============
@@ -45,6 +44,71 @@ export interface ReportDetail extends Report {
   created_at: number;
   company_id?: string;
   market?: string;
+  industry_code?: string;
+}
+
+export interface PortfolioPosition {
+  id: string;
+  market: string;
+  symbol: string;
+  name?: string | null;
+  quantity: number;
+  avg_cost: number;
+  target_buy_price?: number | null;
+  target_sell_price?: number | null;
+  current_price?: number | null;
+  market_value?: number | null;
+  unrealized_pnl?: number | null;
+  unrealized_pnl_pct?: number | null;
+  strategy_buy_price?: number | null;
+  strategy_buy_ok?: boolean | null;
+  strategy_buy_reason?: string | null;
+  strategy_sell_price?: number | null;
+  strategy_sell_ok?: boolean | null;
+  strategy_sell_reason?: string | null;
+  updated_at: number;
+}
+
+export interface PortfolioCreatePositionRequest {
+  market: string;
+  symbol: string;
+  name?: string | null;
+  target_buy_price?: number | null;
+  target_sell_price?: number | null;
+}
+
+export interface PortfolioUpdatePositionRequest {
+  name?: string | null;
+  target_buy_price?: number | null;
+  target_sell_price?: number | null;
+}
+
+export interface PortfolioTradeRequest {
+  position_id: string;
+  side: 'BUY' | 'SELL';
+  quantity: number;
+}
+
+export interface PortfolioTrade {
+  id: string;
+  position_id: string;
+  side: 'BUY' | 'SELL';
+  price: number;
+  quantity: number;
+  amount: number;
+  created_at: number;
+}
+
+export interface PortfolioAlert {
+  key: string;
+  position_id: string;
+  market: string;
+  symbol: string;
+  name?: string | null;
+  alert_type: string;
+  message: string;
+  current_price?: number | null;
+  trigger_price?: number | null;
 }
 
 export interface Metric {
@@ -111,7 +175,14 @@ export interface StockIndicators {
   ma5?: number | null;
   ma20?: number | null;
   ma60?: number | null;
+  slope_raw?: number | null;
+  slope_pct?: number | null;
+  trend?: string | null;
+  slope_advice?: string | null;
+  pe_ratio?: number | null;
+  atr14?: number | null;
   rsi14?: number | null;
+  rsi_rebound?: boolean | null;
   macd_dif?: number | null;
   macd_dea?: number | null;
   macd_hist?: number | null;
@@ -119,6 +190,13 @@ export interface StockIndicators {
   buy_price_aggressive?: number | null;
   buy_price_stable?: number | null;
   sell_price?: number | null;
+
+  buy_reason?: string | null;
+  sell_reason?: string | null;
+
+  buy_price_aggressive_ok?: boolean | null;
+  buy_price_stable_ok?: boolean | null;
+  sell_price_ok?: boolean | null;
 
   signal_golden_cross?: boolean | null;
   signal_death_cross?: boolean | null;
@@ -228,6 +306,62 @@ export async function getStockIndicators(symbol: string, market: string = 'CN') 
 }
 
 /**
+ * Portfolio - list positions
+ */
+export async function getPortfolioPositions() {
+  return fetchAPI<PortfolioPosition[]>(`/api/portfolio/positions`);
+}
+
+/**
+ * Portfolio - create position
+ */
+export async function createPortfolioPosition(req: PortfolioCreatePositionRequest) {
+  return fetchAPI<PortfolioPosition>(`/api/portfolio/positions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  });
+}
+
+/**
+ * Portfolio - update position
+ */
+export async function updatePortfolioPosition(positionId: string, req: PortfolioUpdatePositionRequest) {
+  return fetchAPI<PortfolioPosition>(`/api/portfolio/positions/${encodeURIComponent(positionId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  });
+}
+
+/**
+ * Portfolio - delete position
+ */
+export async function deletePortfolioPosition(positionId: string) {
+  return fetchAPI<{ ok: boolean }>(`/api/portfolio/positions/${encodeURIComponent(positionId)}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Portfolio - create trade (BUY/SELL). Price uses latest.
+ */
+export async function createPortfolioTrade(req: PortfolioTradeRequest) {
+  return fetchAPI<PortfolioTrade>(`/api/portfolio/trades`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  });
+}
+
+/**
+ * Portfolio - alerts
+ */
+export async function getPortfolioAlerts() {
+  return fetchAPI<PortfolioAlert[]>(`/api/portfolio/alerts`);
+}
+
+/**
  * Upload a financial report file
  */
 export async function uploadReport(
@@ -261,7 +395,8 @@ export async function fetchMarketReport(
   symbol: string,
   market = 'CN',
   periodType = 'annual',
-  periodEnd = '2024-12-31'
+  periodEnd = '2024-12-31',
+  companyName?: string
 ): Promise<{ report_id: string; message: string }> {
   const params = new URLSearchParams({
     symbol,
@@ -269,6 +404,10 @@ export async function fetchMarketReport(
     period_type: periodType,
     period_end: periodEnd,
   });
+
+  if (companyName && companyName.trim()) {
+    params.set('company_name', companyName.trim());
+  }
 
   return fetchAPI(`/api/reports/fetch?${params}`, { method: 'POST' });
 }

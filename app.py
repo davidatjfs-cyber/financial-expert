@@ -103,7 +103,7 @@ def main() -> None:
         if st.button("查看全部", type="secondary"):
             st.switch_page("pages/3_分析报告.py")
 
-    reports = list_reports(limit=5)
+    reports = list_reports(limit=10)
     if not reports:
         st.info("暂无报告，点击上方「上传财务报表」开始")
     else:

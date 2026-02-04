@@ -89,6 +89,40 @@ class Watchlist(Base):
     updated_at: Mapped[int] = mapped_column(Integer, default=lambda: int(time.time()))
 
 
+class PortfolioPosition(Base):
+    __tablename__ = "portfolio_positions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    market: Mapped[str] = mapped_column(String, index=True)
+    symbol: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    quantity: Mapped[float] = mapped_column(Float, default=0.0)
+    avg_cost: Mapped[float] = mapped_column(Float, default=0.0)
+
+    target_buy_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    target_sell_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    created_at: Mapped[int] = mapped_column(Integer, default=lambda: int(time.time()))
+    updated_at: Mapped[int] = mapped_column(Integer, default=lambda: int(time.time()))
+
+    __table_args__ = (UniqueConstraint("market", "symbol", name="uq_portfolio_positions_market_symbol"),)
+
+
+class PortfolioTrade(Base):
+    __tablename__ = "portfolio_trades"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    position_id: Mapped[str] = mapped_column(String, ForeignKey("portfolio_positions.id"), index=True)
+
+    side: Mapped[str] = mapped_column(String)  # BUY / SELL
+    price: Mapped[float] = mapped_column(Float)
+    quantity: Mapped[float] = mapped_column(Float)
+    amount: Mapped[float] = mapped_column(Float)
+
+    created_at: Mapped[int] = mapped_column(Integer, default=lambda: int(time.time()))
+
+
 class MappingRule(Base):
     __tablename__ = "mapping_rules"
 

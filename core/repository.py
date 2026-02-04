@@ -152,24 +152,14 @@ def upsert_report_file_upload(
     period_end: str,
     source_meta: dict,
 ) -> str:
+    # IMPORTANT: for file uploads we should not overwrite previous reports.
+    # Users may upload multiple versions for the same company/period.
+    # Use a unique natural_key suffix so every upload is persisted.
     natural_key = build_report_natural_key_file_upload(upload_company_name, period_type, period_end)
+    natural_key = f"{natural_key}|{uuid.uuid4()}"
     now = int(time.time())
 
     with session_scope() as s:
-        stmt = select(Report).where(Report.natural_key == natural_key)
-        existing = s.execute(stmt).scalars().first()
-
-        if existing:
-            delete_report_children(existing.id)
-            existing.report_name = report_name
-            existing.source_meta = json.dumps(source_meta, ensure_ascii=False)
-            existing.period_type = period_type
-            existing.period_end = period_end
-            existing.status = "pending"
-            existing.error_message = None
-            existing.updated_at = now
-            return existing.id
-
         r = Report(
             id=str(uuid.uuid4()),
             natural_key=natural_key,

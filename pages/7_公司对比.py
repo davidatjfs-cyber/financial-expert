@@ -98,6 +98,37 @@ def main() -> None:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    with st.expander("导出对比报告", expanded=False):
+        try:
+            csv_bytes = df.to_csv(index=False).encode("utf-8")
+        except Exception:
+            csv_bytes = b""
+        if csv_bytes:
+            st.download_button(
+                "⬇️ 下载 CSV",
+                data=csv_bytes,
+                file_name="compare.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+
+        try:
+            html = df.to_html(index=False)
+            html_doc = f"""<!doctype html><html><head><meta charset='utf-8'><title>Compare Report</title>
+<style>body{{font-family:Arial,Helvetica,sans-serif;padding:20px;}} table{{border-collapse:collapse;width:100%;}} th,td{{border:1px solid #ddd;padding:8px;}} th{{background:#f5f5f5;}}</style>
+</head><body><h2>多公司财务对比</h2>{html}</body></html>"""
+            st.download_button(
+                "⬇️ 下载 HTML",
+                data=html_doc.encode("utf-8"),
+                file_name="compare.html",
+                mime="text/html",
+                use_container_width=True,
+            )
+        except Exception:
+            st.info("HTML 导出不可用")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
     # 雷达图对比
     st.markdown("#### 📈 综合能力雷达图")
     

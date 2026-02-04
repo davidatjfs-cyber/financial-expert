@@ -64,3 +64,14 @@ Thumbs.db
 
 # Deployment
 windsurf_deployment.yaml
+
+*.tar
+*.tar.gz
+*.tgz
+
+ocr_*.txt
+
+hr-management-system/
+hr-management-system
+restaurant-site-evaluator-2/
+restaurant-site-evaluator-2

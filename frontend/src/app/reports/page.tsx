@@ -40,7 +40,7 @@ export default function ReportsPage() {
   });
 
   return (
-    <div className="p-5 md:p-8 flex flex-col gap-6 max-w-2xl mx-auto">
+    <div className="p-5 md:p-8 flex flex-col gap-6 max-w-2xl mx-auto pb-24">
       {/* Header */}
       <div>
         <h1 className="text-[#FAFAF9] text-xl md:text-2xl font-semibold">分析报告</h1>
@@ -101,7 +101,7 @@ export default function ReportsPage() {
               key={report.id}
               title={report.report_name}
               source={report.source_type === 'market_fetch' ? '市场数据' : '文件上传'}
-              date={report.source_type === 'file_upload' ? formatDateTime(report.created_at) : report.period_end}
+              date={formatDateTime(report.created_at)}
               status={report.status}
               onClick={() => router.push(`/reports/${report.id}`)}
             />

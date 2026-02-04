@@ -14,6 +14,43 @@ const comparisonData = [
 ];
 
 export default function ComparePage() {
+  const download = (data: BlobPart, filename: string, mime: string) => {
+    const blob = new Blob([data], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportCsv = () => {
+    const header = ['指标', '公司1', '公司2'];
+    const rows = comparisonData.map((r) => [r.metric, r.company1, r.company2]);
+    const esc = (s: any) => {
+      const v = String(s ?? '');
+      if (/[",\n]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+      return v;
+    };
+    const csv = [header, ...rows].map((r) => r.map(esc).join(',')).join('\n');
+    download(csv, 'compare.csv', 'text/csv;charset=utf-8');
+  };
+
+  const exportHtml = () => {
+    const rows = comparisonData
+      .map(
+        (r) =>
+          `<tr><td>${r.metric}</td><td>${r.company1}</td><td>${r.company2}</td></tr>`
+      )
+      .join('');
+    const html = `<!doctype html><html><head><meta charset="utf-8" /><title>对比报告</title>
+<style>body{font-family:Arial,Helvetica,sans-serif;padding:20px;} table{border-collapse:collapse;width:100%;} th,td{border:1px solid #ddd;padding:8px;} th{background:#f5f5f5;}</style>
+</head><body><h2>多公司财务对比</h2><table><thead><tr><th>指标</th><th>公司1</th><th>公司2</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+    download(html, 'compare.html', 'text/html;charset=utf-8');
+  };
+
   return (
     <div className="p-4 md:p-6 max-w-4xl">
       <PageHeader
@@ -44,6 +81,21 @@ export default function ComparePage() {
         <div className="flex items-center gap-2 mb-2">
           <span className="text-sm">📋</span>
           <h2 className="text-[#FAFAF9] text-sm font-semibold">指标对比表</h2>
+        </div>
+
+        <div className="flex gap-2 mb-2">
+          <button
+            onClick={exportCsv}
+            className="flex-1 bg-[#16161A] text-[#FAFAF9] rounded-xl py-3 px-4 font-medium text-sm border border-[#2A2A2E]"
+          >
+            ⬇️ 导出 CSV
+          </button>
+          <button
+            onClick={exportHtml}
+            className="flex-1 bg-[#16161A] text-[#FAFAF9] rounded-xl py-3 px-4 font-medium text-sm border border-[#2A2A2E]"
+          >
+            ⬇️ 导出 HTML
+          </button>
         </div>
         <div className="bg-[#16161A] rounded-xl overflow-hidden border border-[#2A2A2E]">
           {/* Header */}

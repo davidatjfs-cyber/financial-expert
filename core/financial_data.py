@@ -406,11 +406,19 @@ def fetch_hk_financials(symbol: str, _v: int = 2) -> Optional[FinancialData]:
         except Exception:
             pass
         
-        # 从 info 获取比率
+        # 从 info 获取比率（港股此字段经常异常，做合理性校验）
         data.gross_margin = info.get("grossMargins") * 100 if info.get("grossMargins") else None
         data.net_margin = info.get("profitMargins") * 100 if info.get("profitMargins") else None
         data.roe = info.get("returnOnEquity") * 100 if info.get("returnOnEquity") else None
         data.current_ratio = info.get("currentRatio")
+
+        try:
+            if data.gross_margin is not None:
+                gm = float(data.gross_margin)
+                if gm <= 0 or gm >= 80:
+                    data.gross_margin = None
+        except Exception:
+            pass
 
         # 如果 yfinance 被限流或在当前环境拿不到关键数据，使用 AkShare 兜底
         no_statements = (
@@ -421,7 +429,7 @@ def fetch_hk_financials(symbol: str, _v: int = 2) -> Optional[FinancialData]:
         )
         no_ratios = (data.gross_margin is None and data.net_margin is None and data.roe is None and data.roa is None)
 
-        if yfinance_rate_limited or (no_statements and no_ratios):
+        if yfinance_rate_limited or (no_statements and no_ratios) or (data.gross_margin is None):
             try:
                 import akshare as ak
 
@@ -447,6 +455,7 @@ def fetch_hk_financials(symbol: str, _v: int = 2) -> Optional[FinancialData]:
                             return None
 
                     data.net_margin = _pct(row.get("销售净利率(%)"))
+                    data.gross_margin = _pct(row.get("销售毛利率(%)"))
                     data.roe = _pct(row.get("股东权益回报率(%)"))
                     data.roa = _pct(row.get("总资产回报率(%)"))
 

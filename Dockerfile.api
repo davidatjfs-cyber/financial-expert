@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM docker.m.daocloud.io/library/python:3.11-slim
 
 WORKDIR /app
 
@@ -11,16 +11,27 @@ RUN sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /
     && apt-get install -y --no-install-recommends \
         fonts-noto-cjk \
         fonts-wqy-zenhei \
+        poppler-utils \
+        tesseract-ocr \
+        tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+ARG APP_REV=0
+RUN echo "${APP_REV}" > /app/.app_rev
 
-ENV STREAMLIT_SERVER_HEADLESS=true \
-    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false \
-    STREAMLIT_SERVER_ENABLE_CORS=false \
-    STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
+COPY api.py ./
+COPY app.py ./
+COPY core ./core
+COPY pages ./pages
+COPY docs ./docs
+COPY financial_analyzer.py ./
+COPY portfolio_optimizer.py ./
 
-CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}"]
+ENV PORT=8000
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT}"]

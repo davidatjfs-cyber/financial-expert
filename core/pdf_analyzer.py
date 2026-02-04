@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 
@@ -56,7 +57,10 @@ def _normalize_chinese_text(text: str) -> str:
 
 def extract_financials_from_pdf(pdf_path: str, use_ai: bool = True, force_ai: bool = False) -> ExtractedFinancials:
     """从 PDF 中提取财务数据 - 支持中英文，可选 AI 增强"""
-    text = extract_pdf_text(pdf_path, max_pages=100, max_chars=500000)
+    max_pages = int((os.environ.get("PDF_TEXT_MAX_PAGES") or "20").strip() or "20")
+    max_chars = int((os.environ.get("PDF_TEXT_MAX_CHARS") or "80000").strip() or "80000")
+    # AI-only path should avoid heavy extractors (pdfplumber/pdfminer/OCR) to prevent server OOM/hangs.
+    text = extract_pdf_text(pdf_path, max_pages=max_pages, max_chars=max_chars, fast_only=bool(force_ai))
     if not text:
         return ExtractedFinancials()
     
@@ -65,72 +69,81 @@ def extract_financials_from_pdf(pdf_path: str, use_ai: bool = True, force_ai: bo
 
     result = ExtractedFinancials()
 
+    # Some PDFs place numbers in tables with frequent newlines; keep a no-newline version for regex.
+    text_no_newline = text.replace("\n", " ")
+
     # ========== 提取报告期 ==========
-    # 苹果格式: "fiscal year ended September 28, 2024"
-    fiscal_match = re.search(r"fiscal\s+year\s+ended\s+(\w+)\s+(\d{1,2}),?\s+(\d{4})", text, re.IGNORECASE)
-    if fiscal_match:
-        month_name = fiscal_match.group(1)
-        day = fiscal_match.group(2)
-        year = fiscal_match.group(3)
-        month_map = {"january": "01", "february": "02", "march": "03", "april": "04", 
-                     "may": "05", "june": "06", "july": "07", "august": "08",
-                     "september": "09", "october": "10", "november": "11", "december": "12"}
-        month = month_map.get(month_name.lower(), "12")
-        result.report_year = year
-        result.report_period = f"{year}-{month}-{day.zfill(2)}"
-    else:
-        # 英文格式: "Year Ended December 31, 2024"
-        year_match = re.search(r"(?:Year|year)\s+[Ee]nded\s+(\w+)\s+(\d{1,2}),?\s+(\d{4})", text)
-        if year_match:
-            month_name = year_match.group(1)
-            day = year_match.group(2)
-            year = year_match.group(3)
-            month_map = {"january": "01", "february": "02", "march": "03", "april": "04", 
-                         "may": "05", "june": "06", "july": "07", "august": "08",
-                         "september": "09", "october": "10", "november": "11", "december": "12"}
-            month = month_map.get(month_name.lower(), "12")
-            result.report_year = year
-            result.report_period = f"{year}-{month}-{day.zfill(2)}"
-        else:
-            # 尝试其他英文格式: "as of December 31, 2024"
-            as_of_match = re.search(r"as\s+of\s+(\w+)\s+(\d{1,2}),?\s+(\d{4})", text, re.IGNORECASE)
-            if as_of_match:
-                month_name = as_of_match.group(1)
-                day = as_of_match.group(2)
-                year = as_of_match.group(3)
-                month_map = {"january": "01", "february": "02", "march": "03", "april": "04", 
-                             "may": "05", "june": "06", "july": "07", "august": "08",
-                             "september": "09", "october": "10", "november": "11", "december": "12"}
-                month = month_map.get(month_name.lower(), "12")
-                result.report_year = year
-                result.report_period = f"{year}-{month}-{day.zfill(2)}"
+    month_map = {
+        "january": 1,
+        "february": 2,
+        "march": 3,
+        "april": 4,
+        "may": 5,
+        "june": 6,
+        "july": 7,
+        "august": 8,
+        "september": 9,
+        "october": 10,
+        "november": 11,
+        "december": 12,
+    }
+
+    date_candidates: list[tuple[int, int, int]] = []
+
+    def _add_date(y: str, m: str | int, d: str) -> None:
+        try:
+            yi = int(y)
+            di = int(d)
+            if isinstance(m, int):
+                mi = int(m)
             else:
-                # 中文季报格式优先: "2025年第三季度报告" 或 "2025年三季度报告"
-                cn_quarterly = re.search(r"(\d{4})年第?[三3]季度报告", text)
-                if cn_quarterly:
-                    result.report_year = cn_quarterly.group(1)
-                    result.report_period = f"{cn_quarterly.group(1)}-09-30"
-                else:
-                    # 中文格式: "2024年12月31日" 或 "2024年度"
-                    cn_match = re.search(r"(\d{4})\s*年\s*(?:(\d{1,2})\s*月\s*(\d{1,2})\s*日|度|年度)", text)
-                    if cn_match:
-                        result.report_year = cn_match.group(1)
-                        if cn_match.group(2) and cn_match.group(3):
-                            result.report_period = f"{cn_match.group(1)}-{cn_match.group(2).zfill(2)}-{cn_match.group(3).zfill(2)}"
-                        else:
-                            result.report_period = f"{cn_match.group(1)}-12-31"
-                    else:
-                        # 英文季报格式: "Third Quarterly Report 2025" 或 "Q3 2025"
-                        quarterly_match = re.search(r"(?:Third|3rd|Q3)\s*(?:Quarterly\s*Report)?\s*(\d{4})", text, re.IGNORECASE)
-                        if quarterly_match:
-                            result.report_year = quarterly_match.group(1)
-                            result.report_period = f"{quarterly_match.group(1)}-09-30"
-                        else:
-                            # 尝试从标题提取年份: "2024 Annual Report"
-                            annual_match = re.search(r"(\d{4})\s*(?:Annual\s+Report|年度报告|年报)", text, re.IGNORECASE)
-                            if annual_match:
-                                result.report_year = annual_match.group(1)
-                                result.report_period = f"{annual_match.group(1)}-12-31"
+                mi = month_map.get(str(m).lower().strip(), 0)
+            if yi <= 1900 or mi <= 0 or mi > 12 or di <= 0 or di > 31:
+                return
+            date_candidates.append((yi, mi, di))
+        except Exception:
+            return
+
+    for mm, dd, yy in re.findall(
+        r"fiscal\s+year\s+ended\s+(\w+)\s+(\d{1,2}),?\s+(\d{4})",
+        text,
+        re.IGNORECASE,
+    ):
+        _add_date(yy, mm, dd)
+
+    for mm, dd, yy in re.findall(
+        r"(?:Year|year)\s+[Ee]nded\s+(\w+)\s+(\d{1,2}),?\s+(\d{4})",
+        text,
+        re.IGNORECASE,
+    ):
+        _add_date(yy, mm, dd)
+
+    for mm, dd, yy in re.findall(r"as\s+of\s+(\w+)\s+(\d{1,2}),?\s+(\d{4})", text, re.IGNORECASE):
+        _add_date(yy, mm, dd)
+
+    cn_quarterly = re.search(r"(\d{4})年第?[三3]季度报告", text)
+    if cn_quarterly:
+        _add_date(cn_quarterly.group(1), 9, "30")
+
+    for yy, mm, dd in re.findall(r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日", text):
+        _add_date(yy, int(mm), dd)
+
+    cn_annual = re.search(r"(\d{4})\s*(?:度|年度)", text)
+    if cn_annual:
+        _add_date(cn_annual.group(1), 12, "31")
+
+    quarterly_match = re.search(r"(?:Third|3rd|Q3)\s*(?:Quarterly\s*Report)?\s*(\d{4})", text, re.IGNORECASE)
+    if quarterly_match:
+        _add_date(quarterly_match.group(1), 9, "30")
+
+    annual_match = re.search(r"(\d{4})\s*(?:Annual\s+Report|年度报告|年报)", text, re.IGNORECASE)
+    if annual_match:
+        _add_date(annual_match.group(1), 12, "31")
+
+    if date_candidates:
+        yy, mm, dd = max(date_candidates)
+        result.report_year = str(yy)
+        result.report_period = f"{yy:04d}-{mm:02d}-{dd:02d}"
 
     def find_first_number(patterns: list[str], txt: str, min_value: float = 0) -> float | None:
         """提取第一个匹配的数字"""
@@ -203,7 +216,7 @@ def extract_financials_from_pdf(pdf_path: str, use_ai: bool = True, force_ai: bo
         r"Operating\s+revenue\s*\(RMB\)\s*([0-9,]+(?:\.[0-9]+)?)",
         r"营业收入[：:\s]*([0-9,]+)",
         r"实现营业收入([0-9,]+(?:\.[0-9]+)?)",  # 银行财报格式
-    ], text, min_value=1000)
+    ], text_no_newline, min_value=1000)
 
     # Cost of revenues / Cost of sales
     result.cost = find_first_number([
@@ -211,17 +224,15 @@ def extract_financials_from_pdf(pdf_path: str, use_ai: bool = True, force_ai: bo
         r"Cost\s+of\s+(?:revenues?|sales)\s*\$?\s*([0-9,]+)",
         r"Cost\s+of\s+sales:\s*\n?\s*Products?\s*\$?\s*([0-9,]+)",  # Apple 格式
         r"营业成本[：:\s]*([0-9,]+)",
-    ], text, min_value=1000)
+    ], text_no_newline, min_value=1000)
 
     # Gross profit / Gross margin
     result.gross_profit = find_first_number([
         r"Gross\s+(?:profit|margin)\s*\$?\s*([0-9,]+)",
         r"毛利[润]?[：:\s]*([0-9,]+)",
-    ], text, min_value=100)
+    ], text_no_newline, min_value=100)
 
     # Net income - 支持多种格式
-    # 先预处理文本，移除换行符以便匹配
-    text_no_newline = text.replace("\n", " ")
     result.net_profit = find_first_number([
         r"Net\s+income\s+attributable\s+to\s+common\s+stockholders?\s*\$?\s*([0-9,]+)",
         r"Net\s+income\s*\$?\s*([0-9,]+)",
