@@ -23,6 +23,9 @@ services:
 
   frontend:
     image: financial-expert-frontend:${FRONTEND_TAG:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
