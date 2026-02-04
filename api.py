@@ -1370,16 +1370,12 @@ def _tencent_fetch_pe_ratio(symbol: str, market: str) -> float | None:
 
         m = (market or "CN").upper()
 
-        # Indices are empirically derived from qt.gtimg.cn payloads.
-        # HK: index 39 looks like PE (e.g. 06811 -> 16.41)
-        # US: index 39 looks like trailing PE (e.g. AAPL -> ~34)
-        # CN: index 65 looks like PE (e.g. 600519 -> ~35)
         if m == "HK":
-            return _num(39)
+            return _num(39) or _num(65)
         if m == "US":
-            return _num(39) or _num(41)
+            return _num(39) or _num(41) or _num(65)
         if m == "CN":
-            return _num(65)
+            return _num(39) or _num(65)
         return None
     except Exception:
         return None
@@ -2462,6 +2458,11 @@ def get_stock_indicators(symbol: str, market: str = "CN"):
                 for c in cols:
                     if not isinstance(c, str):
                         continue
+                    if "市盈率" in c and "TTM" in c.upper():
+                        return c
+                for c in cols:
+                    if not isinstance(c, str):
+                        continue
                     if "市盈率" in c:
                         return c
                 for c in cols:
@@ -2502,6 +2503,35 @@ def get_stock_indicators(symbol: str, market: str = "CN"):
                 or info.get("trailingPE")
                 or info.get("forwardPE")
             )
+
+            # For HK, AkShare spot is often closer to the commonly quoted PE(TTM) in Chinese apps.
+            if m == "HK":
+                try:
+                    disable_proxies_for_process()
+                    import akshare as ak
+
+                    spot = ak.stock_hk_spot_em()
+                    if spot is not None and not spot.empty:
+                        code_col = None
+                        for c in ("代码", "symbol", "Symbol"):
+                            if c in spot.columns:
+                                code_col = c
+                                break
+                        if code_col:
+                            base = (symbol or "").split(".", 1)[0].upper()
+                            base = base.replace(".HK", "")
+                            base = base.zfill(5) if base.isdigit() else base
+                            hit = spot[spot[code_col].astype(str).str.upper() == base]
+                            if not hit.empty:
+                                row = hit.iloc[0]
+                                pe_col = _find_pe_column([str(c) for c in list(spot.columns)])
+                                if pe_col and pe_col in spot.columns:
+                                    pe_ratio_ak = _safe_float(row.get(pe_col))
+                                    if pe_ratio_ak is not None:
+                                        pe_ratio = pe_ratio_ak
+                except Exception:
+                    pass
+
             if pe_ratio is None and m in {"US", "HK"}:
                 try:
                     disable_proxies_for_process()

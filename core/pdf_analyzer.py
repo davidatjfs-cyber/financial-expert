@@ -210,8 +210,10 @@ def extract_financials_from_pdf(pdf_path: str, use_ai: bool = True, force_ai: bo
     # Total revenues - 支持多种格式
     result.revenue = find_first_number([
         r"Total\s+net\s+sales\s*\$?\s*([0-9,\s]+)",  # Apple 格式优先
+        r"Total\s+net\s+revenues\s*\$?\s*([0-9,\s]+)",
         r"Total\s+revenues?\s*\$?\s*([0-9,\s]+)",
         r"Net\s+sales\s*\$?\s*([0-9,\s]+)",
+        r"Net\s+revenues\s*\$?\s*([0-9,\s]+)",
         r"Operatingrevenue\s*\(RMB\)\s*([0-9,\s]+(?:\.[0-9]+)?)",  # 五粮液格式
         r"Operating\s+revenue\s*\(RMB\)\s*([0-9,\s]+(?:\.[0-9]+)?)",
         r"营业收入[：:\s]*([0-9,\s]+)",
@@ -236,6 +238,7 @@ def extract_financials_from_pdf(pdf_path: str, use_ai: bool = True, force_ai: bo
     result.net_profit = find_first_number([
         r"Net\s+income\s+attributable\s+to\s+common\s+stockholders?\s*\$?\s*([0-9,\s]+)",
         r"Net\s+income\s*\$?\s*([0-9,\s]+)",
+        r"Net\s+earnings\s*\$?\s*([0-9,\s]+)",
         r"thelistedcompany.s\s+([0-9,\s]+(?:\.[0-9]+)?)",  # 五粮液格式 - 用.匹配任意引号
         r"Net\s+profit\s+attributable\s+to.*shareholders\s*\(RMB\)\s*([0-9,\s]+(?:\.[0-9]+)?)",
         r"归属于上市公司股东的净利润[（(]元[)）]\s*([0-9,\s]+(?:\.[0-9]+)?)",  # A股季报格式

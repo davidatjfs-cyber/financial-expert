@@ -410,6 +410,19 @@ def extract_pdf_text(
         except Exception:
             return False
 
+    def _debug_enabled() -> bool:
+        try:
+            return (os.environ.get("PDF_TEXT_DEBUG") or "0").strip() == "1"
+        except Exception:
+            return False
+
+    def _maybe_debug(msg: str) -> None:
+        try:
+            if _debug_enabled():
+                print(msg)
+        except Exception:
+            pass
+
     out = ""
 
     # Decide which pages to read. For long documents, pick pages smartly instead of only the first N.
@@ -475,9 +488,19 @@ def extract_pdf_text(
             except Exception:
                 pass
 
-        # If still garbled/empty, try guarded OCR fallback.
-        if not out or _is_garbled_text(out):
+        # If still garbled/empty, or too short/uninformative, try guarded OCR fallback.
+        too_short = False
+        try:
+            min_chars = int((os.environ.get("PDF_TEXT_MIN_CHARS_FOR_NO_OCR") or "800").strip() or "800")
+            s0 = (out or "").strip()
+            digit_cnt = sum(1 for ch in s0 if ch.isdigit())
+            too_short = (len(s0) < min_chars) or (digit_cnt < 20)
+        except Exception:
+            too_short = False
+
+        if (not out) or _is_garbled_text(out) or too_short:
             try:
+                _maybe_debug(f"pdf_text: triggering ocr fallback; len={len((out or '').strip())} too_short={too_short}")
                 ocr_text = _extract_with_ocr(str(p), max_pages)
                 if ocr_text:
                     ocr_text = _strip_ctrl(ocr_text)
@@ -588,8 +611,22 @@ def extract_pdf_text(
         except Exception:
             pass
     
-    # 如果文本是乱码，尝试 OCR
-    if _is_garbled_text(out):
+    # 如果文本是乱码/过短，尝试 OCR
+    try:
+        min_chars2 = int((os.environ.get("PDF_TEXT_MIN_CHARS_FOR_NO_OCR") or "800").strip() or "800")
+    except Exception:
+        min_chars2 = 800
+
+    too_short2 = False
+    try:
+        s2 = (out or "").strip()
+        digit_cnt2 = sum(1 for ch in s2 if ch.isdigit())
+        too_short2 = (len(s2) < min_chars2) or (digit_cnt2 < 20)
+    except Exception:
+        too_short2 = False
+
+    if _is_garbled_text(out) or too_short2:
+        _maybe_debug(f"pdf_text: triggering final ocr; len={len((out or '').strip())} too_short={too_short2}")
         ocr_text = _extract_with_ocr(str(p), max_pages)
         if ocr_text:
             ocr_text = _strip_ctrl(ocr_text)
