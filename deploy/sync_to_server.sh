@@ -11,9 +11,14 @@ DEPLOY_PATH="${DEPLOY_PATH:-/opt/financial-expert}"
 
 echo "[sync] -> ${DEPLOY_SSH_HOST}:${DEPLOY_PATH}"
 
+RSYNC_PROGRESS_FLAG="--progress"
+if rsync --version 2>/dev/null | head -n 1 | grep -qE "version 3\.[0-9]+\.[0-9]+"; then
+  RSYNC_PROGRESS_FLAG="--info=progress2"
+fi
+
 # Be safe: do NOT delete remote files; do NOT overwrite server .env; do NOT touch persistent data.
 rsync -az \
-  --info=progress2 \
+  ${RSYNC_PROGRESS_FLAG} \
   --exclude ".git/" \
   --exclude ".env" \
   --exclude "data/" \
