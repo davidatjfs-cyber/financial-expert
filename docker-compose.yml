@@ -12,6 +12,12 @@ services:
       - FORCE_PDF_AI=${FORCE_PDF_AI:-0}
       - ENABLE_OCR=${ENABLE_OCR:-0}
       - AUTO_OCR_FALLBACK=${AUTO_OCR_FALLBACK:-1}
+      - OCR_AUTO_MAX_PDF_MB=${OCR_AUTO_MAX_PDF_MB:-25}
+      - OCR_AUTO_MAX_PAGECOUNT=${OCR_AUTO_MAX_PAGECOUNT:-300}
+      - PDF_TEXT_MIN_CHARS_FOR_NO_OCR=${PDF_TEXT_MIN_CHARS_FOR_NO_OCR:-800}
+      - PDF_TEXT_DEBUG=${PDF_TEXT_DEBUG:-0}
+      - OCR_DPI=${OCR_DPI:-120}
+      - OCR_LANG=${OCR_LANG:-eng}
     volumes:
       - /opt/financial-expert/data:/data
     logging:

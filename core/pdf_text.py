@@ -135,7 +135,13 @@ def _extract_with_ocr(path: str, max_pages: int = 10) -> str:
                     pass
 
                 if page_count > 0:
-                    if (not enable_ocr) and page_count > 200:
+                    try:
+                        auto_max_page_count = int((os.environ.get("OCR_AUTO_MAX_PAGECOUNT") or "300").strip() or "300")
+                    except Exception:
+                        auto_max_page_count = 300
+                    if auto_max_page_count <= 0:
+                        auto_max_page_count = 300
+                    if (not enable_ocr) and page_count > auto_max_page_count:
                         return ""
                     # Sample across the document; adapt step to the number of probe pages requested.
                     # Using a fixed //10 can miss statement pages for some PDFs.

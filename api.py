@@ -2565,21 +2565,37 @@ def get_stock_indicators(symbol: str, market: str = "CN"):
                 except Exception:
                     pe_ratio = None
         elif m == "CN":
+            # For CN A-shares, Tencent quote field 39 is usually a stable PE value.
+            try:
+                pe_ratio = _safe_float(_tencent_fetch_pe_ratio(symbol, m))
+            except Exception:
+                pe_ratio = None
+
             disable_proxies_for_process()
             import akshare as ak
 
             code = symbol.split(".")[0]
-            try:
-                pe_df = ak.stock_a_indicator_lg(symbol=code)
-                if pe_df is not None and not pe_df.empty:
-                    last = pe_df.iloc[-1]
-                    for k in ["pe_ttm", "市盈率TTM", "市盈率(动)", "pe"]:
-                        if k in pe_df.columns:
-                            pe_ratio = _safe_float(last.get(k))
-                            if pe_ratio is not None:
-                                break
-            except Exception:
-                pe_ratio = None
+            if pe_ratio is None:
+                try:
+                    pe_df = ak.stock_a_indicator_lg(symbol=code)
+                    if pe_df is not None and not pe_df.empty:
+                        last = pe_df.iloc[-1]
+
+                        # Prefer TTM columns when present (case-insensitive).
+                        cols = [str(c) for c in list(pe_df.columns)]
+                        ttm_cols = [c for c in cols if ("ttm" in c.lower()) or ("市盈率" in c and "ttm" in c.upper())]
+                        prefer = []
+                        if ttm_cols:
+                            prefer.extend(ttm_cols)
+                        prefer.extend(["pe_ttm", "市盈率TTM", "市盈率(动)", "市盈率", "pe"])
+
+                        for k in prefer:
+                            if k in pe_df.columns:
+                                pe_ratio = _safe_float(last.get(k))
+                                if pe_ratio is not None:
+                                    break
+                except Exception:
+                    pe_ratio = None
 
             if pe_ratio is None:
                 try:
@@ -2601,6 +2617,7 @@ def get_stock_indicators(symbol: str, market: str = "CN"):
                 except Exception:
                     pe_ratio = None
 
+            # As a last resort, try Tencent again.
             if pe_ratio is None:
                 try:
                     pe_ratio = _safe_float(_tencent_fetch_pe_ratio(symbol, m))
