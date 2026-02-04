@@ -3,7 +3,18 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-import streamlit as st
+try:
+    import streamlit as st
+except Exception:  # pragma: no cover
+    class _NoStreamlit:
+        @staticmethod
+        def cache_data(ttl: int | None = None):
+            def _decorator(fn):
+                return fn
+
+            return _decorator
+
+    st = _NoStreamlit()  # type: ignore
 
 from core.net import disable_proxies_for_process
 

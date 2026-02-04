@@ -16,8 +16,8 @@ RUN sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /
         tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements-api.txt ./
+RUN pip install --no-cache-dir -r requirements-api.txt
 
 ARG APP_REV=0
 RUN echo "${APP_REV}" > /app/.app_rev
